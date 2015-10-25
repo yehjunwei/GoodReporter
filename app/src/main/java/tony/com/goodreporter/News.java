@@ -5,5 +5,7 @@ package tony.com.goodreporter;
  */
 public class News {
     public String time;
+    public String name;
+    public String link;
     public String message;
 }

@@ -7,7 +7,9 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.Html;
 import android.text.TextUtils;
+import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -91,9 +93,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getFacebookPosts() {
+        mNewsList.clear();
 //        Log.d(TAG, "fb access token = " + AccessToken.getCurrentAccessToken().getToken());
-//        Bundle params = new Bundle();
-//        params.putString("filter", "app_2309869772");
         /* make the API call */
         new GraphRequest(
                 AccessToken.getCurrentAccessToken(),
@@ -111,21 +112,7 @@ public class MainActivity extends AppCompatActivity {
                                 JSONObject post = posts.optJSONObject(i);
                                 if(post != null) {
                                     Log.d(TAG, post.toString());
-                                    String message = post.optString("message");
                                     String id = post.optString("id");
-                                    String created_time = post.optString("created_time");
-                                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
-                                    News news = new News();
-                                    try {
-                                        long millis = sdf.parse(created_time).getTime();
-                                        news.time = Utils.convertMillisToDateString(millis, "yyyy.MM.dd", Utils.TIME_DEFAULT_TIMEZONE, false);
-
-                                    } catch (java.text.ParseException e) {
-                                        e.printStackTrace();
-                                    }
-                                    news.message = message;
-                                    mNewsList.add(news);
-                                    mNewsAdapter.notifyDataSetChanged();
                                     getPostDetail(id);
                                 }
                             }
@@ -136,19 +123,36 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getPostDetail(final String id) {
+        Bundle params = new Bundle();
+        params.putString("fields", "id,name,link,message,created_time");
     /* make the API call */
         new GraphRequest(
                 AccessToken.getCurrentAccessToken(),
                 "/"+id,
-                null,
+                params,
                 HttpMethod.GET,
                 new GraphRequest.Callback() {
                     public void onCompleted(GraphResponse response) {
                     /* handle the result */
                         JSONObject obj = response.getJSONObject();
+                        Log.d(TAG, "post detail: " + obj.toString());
                         String link = obj.optString("link");
+                        String created_time = obj.optString("created_time");
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
                         if(!TextUtils.isEmpty(link)) {
-                            Log.w(TAG, link);
+                            News news = new News();
+                            try {
+                                long millis = sdf.parse(created_time).getTime();
+                                news.time = Utils.convertMillisToDateString(millis, "yyyy.MM.dd", Utils.TIME_DEFAULT_TIMEZONE, false);
+
+                            } catch (java.text.ParseException e) {
+                                e.printStackTrace();
+                            }
+                            news.name = obj.optString("name");
+                            news.link = link;
+                            news.message = obj.optString("message");
+                            mNewsList.add(news);
+                            mNewsAdapter.notifyDataSetChanged();
                         }
                     }
                 }
@@ -234,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
                 convertView = mInflater.inflate(R.layout.main_list_item, null);
                 holder.time = (TextView) convertView.findViewById(R.id.main_list_item_time);
                 holder.message = (TextView) convertView.findViewById(R.id.main_list_item_title);
+                holder.link = (TextView) convertView.findViewById(R.id.main_list_item_link);
                 if (convertView != null)
                     convertView.setTag(holder);
             } else {
@@ -243,6 +248,11 @@ public class MainActivity extends AppCompatActivity {
             // set data
             holder.time.setText(mItems.get(position).time);
             holder.message.setText(mItems.get(position).message);
+            String link = mItems.get(position).link;
+            String name = mItems.get(position).name;
+            holder.link.setText(Html.fromHtml("<a href=\""+link+"\">"+name+"</a> "));
+            holder.link.setMovementMethod(LinkMovementMethod.getInstance());
+
             return convertView;
         }
     }
@@ -250,5 +260,6 @@ public class MainActivity extends AppCompatActivity {
     class ViewHolder {
         TextView time;
         TextView message;
+        TextView link;
     }
 }
